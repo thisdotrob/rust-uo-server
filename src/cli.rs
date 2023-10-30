@@ -36,7 +36,7 @@ pub fn start(progress_bars: Arc<Mutex<MultiProgress>>, timer_register_tx: mpsc::
             let interval: i64 = interval.parse().expect("Failed to parse numeric string");
 
             let timer_args = TimerArgs {
-                callback: String::from(name), repetitions, interval
+                name: String::from(name), repetitions, interval
             };
 
             timer_register_tx.send(timer_args).unwrap();

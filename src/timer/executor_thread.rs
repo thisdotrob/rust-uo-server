@@ -13,7 +13,7 @@ pub fn spawn(execute_rx: mpsc::Receiver<Timer>, progress_bars: Arc<Mutex<MultiPr
         let mut progress_bars_lookup: HashMap<String, ProgressBar> = HashMap::new();
 
         for timer in execute_rx {
-            let progress_bar = progress_bars_lookup.get(&timer.callback);
+            let progress_bar = progress_bars_lookup.get(&timer.name);
             match progress_bar {
                 Some(pb) => {
                     pb.inc(1);
@@ -23,9 +23,9 @@ pub fn spawn(execute_rx: mpsc::Receiver<Timer>, progress_bars: Arc<Mutex<MultiPr
                     let total: u64 = timer.repetitions.try_into().unwrap();
                     let pb = progress_bars.add(ProgressBar::new(total));
                     pb.set_style(sty.clone());
-                    pb.set_message(String::from(&timer.callback));
+                    pb.set_message(String::from(&timer.name));
                     pb.inc(1);
-                    progress_bars_lookup.insert(String::from(&timer.callback), pb);
+                    progress_bars_lookup.insert(String::from(&timer.name), pb);
                 }
             }
         }

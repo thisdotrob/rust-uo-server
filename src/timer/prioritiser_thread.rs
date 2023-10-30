@@ -32,7 +32,7 @@ pub fn spawn(execute_tx: mpsc::Sender<Timer>, new_timers: Arc<Mutex<Vec<Timer>>>
                 }
 
                 let next_timer = Timer {
-                    callback: String::from(&timer.callback),
+                    name: String::from(&timer.name),
                     repetitions: timer.repetitions - 1,
                     interval: timer.interval,
                     next: timer.next + timer.interval,

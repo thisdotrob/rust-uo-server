@@ -8,7 +8,7 @@ mod executor_thread;
 
 #[derive(Debug)]
 pub struct Timer {
-    callback: String,
+    name: String,
     repetitions: isize,
     interval: i64,
     next: i64, // TODO rename to `next_tick`?
@@ -16,7 +16,7 @@ pub struct Timer {
 
 #[derive(Debug)]
 pub struct TimerArgs {
-    pub callback: String,
+    pub name: String,
     pub repetitions: isize,
     pub interval: i64,
 }
