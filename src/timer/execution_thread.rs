@@ -17,6 +17,7 @@ pub fn spawn(execute_rx: mpsc::Receiver<Timer>, progress_bars: Arc<Mutex<MultiPr
             match progress_bar {
                 Some(pb) => {
                     pb.inc(1);
+                    println!("incremented existing progress bar");
                 }
                 None => {
                     let progress_bars = progress_bars.lock().unwrap();
@@ -25,6 +26,7 @@ pub fn spawn(execute_rx: mpsc::Receiver<Timer>, progress_bars: Arc<Mutex<MultiPr
                     pb.set_style(sty.clone());
                     pb.set_message(String::from(&timer.name));
                     pb.inc(1);
+                    println!("incremented new progress bar");
                     progress_bars_lookup.insert(String::from(&timer.name), pb);
                 }
             }

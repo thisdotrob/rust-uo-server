@@ -1,10 +1,10 @@
 use chrono::prelude::*;
-use indicatif::MultiProgress;
 use std::sync::{Arc, Mutex, mpsc};
+use indicatif::MultiProgress;
 
-mod registrar_thread;
-mod prioritiser_thread;
-mod executor_thread;
+mod registration_thread;
+mod prioritisation_thread;
+mod execution_thread;
 
 #[derive(Debug)]
 pub struct Timer {
@@ -26,18 +26,16 @@ fn current_ticks() -> i64 {
     utc_now.timestamp_millis()
 }
 
-pub fn start() -> (Arc<Mutex<MultiProgress>>, mpsc::Sender<TimerArgs>) {
+pub fn start(progress_bars: Arc<Mutex<MultiProgress>>) -> mpsc::Sender<TimerArgs> {
     let (register_tx, register_rx) = mpsc::channel::<TimerArgs>();
     let (execute_tx, execute_rx) = mpsc::channel::<Timer>();
 
     let new_timers: Vec<Timer> = vec![];
     let new_timers = Arc::new(Mutex::new(new_timers));
 
-    let progress_bars = Arc::new(Mutex::new(MultiProgress::new()));
+    registration_thread::spawn(register_rx, Arc::clone(&new_timers));
+    prioritisation_thread::spawn(execute_tx, new_timers);
+    execution_thread::spawn(execute_rx, progress_bars);
 
-    registrar_thread::spawn(register_rx, Arc::clone(&new_timers));
-    prioritiser_thread::spawn(execute_tx, new_timers);
-    executor_thread::spawn(execute_rx, Arc::clone(&progress_bars));
-
-    return (progress_bars, register_tx)
+    return register_tx
 }
