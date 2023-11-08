@@ -24,11 +24,14 @@ pub fn spawn(execute_tx: mpsc::Sender<Timer>, new_timers: Arc<Mutex<Vec<Timer>>>
             for timer in timers {
                 if timer.next < now {
                     if timer.repetitions > 1 {
+                        let callback: Arc<dyn Fn() + Send + Sync> = Arc::clone(&timer.callback);
+
                         let next_repetition = Timer {
                             name: String::from(&timer.name),
                             repetitions: timer.repetitions - 1,
                             interval: timer.interval,
                             next: timer.next + timer.interval,
+                            callback,
                         };
                         not_due.push(next_repetition);
                     }
