@@ -1,15 +1,15 @@
-use crate::timer::TimerArgs;
 use std::io::{Write, stdout};
 use std::io;
 use crossterm::{QueueableCommand, cursor};
-
 use std::sync::{Arc, mpsc};
+use crate::timer::Timer;
+use crate::ticks::current_ticks;
 
 fn clear_terminal() {
     print!("{}[2J", 27 as char);
 }
 
-pub fn start(timer_register_tx: mpsc::Sender<TimerArgs>) {
+pub fn start(timer_register_tx: mpsc::Sender<Timer>) {
     let mut row = 0;
 
     loop {
@@ -41,10 +41,9 @@ pub fn start(timer_register_tx: mpsc::Sender<TimerArgs>) {
         let callback: Arc<dyn Fn() + Send + Sync> = Arc::new(move || {
             let mut stdout = stdout();
 
-            let ticks = crate::timer::current_ticks();
-
             stdout.queue(cursor::SavePosition).expect("Error saving position");
             stdout.queue(cursor::MoveTo(0, row)).expect("Error moving cursor");
+            let ticks = current_ticks();
             print!("{} - {}", state, ticks);
             stdout.queue(cursor::RestorePosition).expect("Error restoring position");
             stdout.flush().expect("Error flushing");
@@ -52,11 +51,14 @@ pub fn start(timer_register_tx: mpsc::Sender<TimerArgs>) {
 
         row += 1;
 
-        let timer_args = TimerArgs {
+        let next = current_ticks() + interval;
+
+        let timer_args = Timer {
             name: String::from(name),
             repetitions,
             interval,
             callback,
+            next,
         };
 
         timer_register_tx.send(timer_args).unwrap();

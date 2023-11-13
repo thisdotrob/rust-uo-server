@@ -1,7 +1,8 @@
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::Duration;
-use super::{Timer, current_ticks};
+use super::Timer;
+use crate::ticks::current_ticks;
 
 pub fn spawn(execute_tx: mpsc::Sender<Timer>, new_timers: Arc<Mutex<Vec<Timer>>>) {
     let _timer_prioritiser_thread = thread::spawn(move || {
