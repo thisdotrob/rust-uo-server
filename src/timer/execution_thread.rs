@@ -1,12 +1,14 @@
 use std::sync::mpsc;
 use std::thread;
-use super::Timer;
+use super::Callback;
 
-pub fn spawn(execute_rx: mpsc::Receiver<Timer>) {
+pub fn spawn(execute_rx: mpsc::Receiver<Box<dyn Callback + Send>>, register_tx: mpsc::Sender<Box<dyn Callback + Send>>) {
     thread::spawn(move || {
-        for timer in execute_rx {
-            let callback = timer.callback;
-            callback();
+        for mut timer in execute_rx {
+            timer.callback();
+            if timer.repetitions() > 0 {
+                register_tx.send(timer).unwrap();
+            }
         }
     });
 }

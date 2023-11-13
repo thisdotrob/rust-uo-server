@@ -1,12 +1,12 @@
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::Duration;
-use super::Timer;
+use super::Callback;
 use crate::ticks::current_ticks;
 
-pub fn spawn(execute_tx: mpsc::Sender<Timer>, new_timers: Arc<Mutex<Vec<Timer>>>) {
-    let _timer_prioritiser_thread = thread::spawn(move || {
-        let mut timers = vec![];
+pub fn spawn(execute_tx: mpsc::Sender<Box<dyn Callback + Send>>, new_timers: Arc<Mutex<Vec<Box<dyn Callback + Send>>>>) {
+    thread::spawn(move || {
+        let mut timers: Vec<Box<dyn Callback + Send>> = Vec::new();
 
         loop {
             thread::sleep(Duration::from_millis(1));
@@ -23,19 +23,7 @@ pub fn spawn(execute_tx: mpsc::Sender<Timer>, new_timers: Arc<Mutex<Vec<Timer>>>
             let now = current_ticks();
 
             for timer in timers {
-                if timer.next < now {
-                    if timer.repetitions > 1 {
-                        let callback: Arc<dyn Fn() + Send + Sync> = Arc::clone(&timer.callback);
-
-                        let next_repetition = Timer {
-                            name: String::from(&timer.name),
-                            repetitions: timer.repetitions - 1,
-                            interval: timer.interval,
-                            next: timer.next + timer.interval,
-                            callback,
-                        };
-                        not_due.push(next_repetition);
-                    }
+                if timer.next() < now {
                     execute_tx.send(timer).unwrap();
                 } else {
                     not_due.push(timer);
