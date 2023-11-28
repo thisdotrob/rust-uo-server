@@ -113,10 +113,10 @@ fn send_server_list_packet(stream: &mut TcpStream) {
     buffer[41] = 0x00;
 
     // server address
-    buffer[42] = 0x01;
+    buffer[42] = 0x7F;
     buffer[43] = 0x00;
     buffer[44] = 0x00;
-    buffer[45] = 0x7F;
+    buffer[45] = 0x01;
 
     stream.write_all(&buffer).unwrap();
     stream.flush().unwrap();
