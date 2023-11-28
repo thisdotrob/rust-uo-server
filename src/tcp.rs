@@ -112,6 +112,12 @@ fn send_server_list_packet(stream: &mut TcpStream) {
 
     buffer[37] = 0x00; // server percent full
 
+    // server timezone
+    buffer[38] = 0x00;
+    buffer[39] = 0x00;
+    buffer[40] = 0x00;
+    buffer[41] = 0x00;
+
     // server address
     buffer[42] = 0x01;
     buffer[43] = 0x00;
