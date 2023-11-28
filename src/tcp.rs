@@ -4,23 +4,13 @@ use std::net::TcpListener;
 use std::net::TcpStream;
 use std::str;
 
-mod thread_pool;
-
 pub fn start() {
     let listener = TcpListener::bind("127.0.0.1:2593").unwrap();
-    let pool = thread_pool::ThreadPool::new(4);
-
     for stream in listener.incoming() {
-        pool.execute(|| {
-            let mut stream = stream.unwrap();
-            let mut buffer = [0; 1024];
-            let mut received = stream.read(&mut buffer).unwrap();
-            while received > 0 {
-                handle_connection(buffer, &mut stream);
-                buffer = [0; 1024];
-                received = stream.read(&mut buffer).unwrap();
-            }
-        });
+        let mut stream = stream.unwrap();
+        let mut buffer = [0; 1024];
+        stream.read(&mut buffer).unwrap();
+        parse_packets(buffer, &mut stream);
     }
 }
 
@@ -192,7 +182,7 @@ fn send_character_list_packet(stream: &mut TcpStream) {
     println!("sent character list packet: {:X?}", buffer);
 }
 
-fn handle_connection(buffer: [u8; 1024], mut stream: &mut TcpStream) {
+fn parse_packets(buffer: [u8; 1024], mut stream: &mut TcpStream) {
     let mut buffer_slice = &buffer[..];
 
     println!("buffer_slice.len(): {}", buffer_slice.len());
