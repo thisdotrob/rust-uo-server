@@ -5,7 +5,7 @@ use std::sync::mpsc;
 
 pub fn start(timer_register_tx: mpsc::Sender<Timer>) {
     // Start a Character timer that decrements hitpoints by 1 every second for 90 repetitions
-    let repetitions = 3;
+    let repetitions = 2;
     let interval = 1000;
     let next = current_ticks() + interval;
     let mut state = Character {
@@ -29,7 +29,7 @@ pub fn start(timer_register_tx: mpsc::Sender<Timer>) {
     timer_register_tx.send(timer).unwrap();
 
     // Start a Monster timer that increases anger by 10 every 500ms for 50 repetitions
-    let repetitions = 50;
+    let repetitions = 2;
     let interval = 500;
     let next = current_ticks() + interval;
     let mut state = Monster {
