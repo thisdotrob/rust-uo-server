@@ -43,46 +43,50 @@ fn read_string<'a>(input: &'a mut &[u8], length: u8) -> &'a str {
 }
 
 fn handle_encrypted_login_seed_packet(buffer_slice: &mut &[u8]) {
+    println!("\nEncrypted Login Seed packet received:");
     let packet_length = 20;
     let (mut bytes, rest) = buffer_slice.split_at(packet_length);
     *buffer_slice = rest;
     let seed = read_u32(&mut bytes);
-    println!("seed: {}", seed);
+    println!("\nseed: {}", seed);
     let major = read_u32(&mut bytes);
     let minor = read_u32(&mut bytes);
     let revision = read_u32(&mut bytes);
     let patch = read_u32(&mut bytes);
-    println!("client version: {}.{}.{}.{}", major, minor, revision, patch);
+    println!("\nclient version: {}.{}.{}.{}", major, minor, revision, patch);
 }
 
 fn handle_account_login_request_packet(buffer_slice: &mut &[u8]) {
+    println!("\nAccount Login Request packet received:");
     let packet_length = 61;
     let (mut bytes, rest) = buffer_slice.split_at(packet_length);
     *buffer_slice = rest;
     let username = read_string(&mut bytes, 30);
-    println!("username: {}", username);
+    println!("\nusername: {}", username);
     let password = read_string(&mut bytes, 30);
-    println!("password: {}", password);
+    println!("\npassword: {}", password);
 }
 
 fn handle_server_select_packet(buffer_slice: &mut &[u8]) {
+    println!("\nServer Select packet received:");
     let packet_length = 2;
     let (mut bytes, rest) = buffer_slice.split_at(packet_length);
     *buffer_slice = rest;
     let server_index = read_u16(&mut bytes);
-    println!("server_index: {}", server_index);
+    println!("\nserver_index: {}", server_index);
 }
 
 fn handle_post_login_packet(buffer_slice: &mut &[u8]) {
+    println!("\nPost Login packet received:");
     let packet_length = 64;
     let (mut bytes, rest) = buffer_slice.split_at(packet_length);
     *buffer_slice = rest;
     let encryption_key = read_u32(&mut bytes);
-    print!("encryption_key: {}, ", encryption_key);
+    println!("\nencryption_key: {}, ", encryption_key);
     let username = read_string(&mut bytes, 30);
-    print!("username: {}, ", username);
+    println!("\nusername: {}, ", username);
     let password = read_string(&mut bytes, 30);
-    println!("password: {}", password);
+    println!("\npassword: {}", password);
 }
 
 fn send_server_list_packet(stream: &mut TcpStream) {
@@ -117,7 +121,7 @@ fn send_server_list_packet(stream: &mut TcpStream) {
     stream.write_all(&buffer).unwrap();
     stream.flush().unwrap();
 
-    println!("sent server list packet: {:X?}", buffer);
+    println!("\nsent server list packet: {:X?}", buffer);
 }
 
 fn send_server_redirect_packet(stream: &mut TcpStream) {
@@ -145,7 +149,8 @@ fn send_server_redirect_packet(stream: &mut TcpStream) {
 
     stream.write_all(&buffer).unwrap();
     stream.flush().unwrap();
-    println!("sent server redirect packet: {:X?}", buffer);
+
+    println!("\nsent server redirect packet: {:X?}", buffer);
 }
 
 fn send_features_packet(stream: &mut TcpStream) {
@@ -159,7 +164,8 @@ fn send_features_packet(stream: &mut TcpStream) {
 
     stream.write_all(&buffer).unwrap();
     stream.flush().unwrap();
-    println!("sent features packet: {:X?}", buffer);
+
+    println!("\nsent features packet: {:X?}", buffer);
 }
 
 fn send_character_list_packet(stream: &mut TcpStream) {
@@ -179,16 +185,18 @@ fn send_character_list_packet(stream: &mut TcpStream) {
 
     stream.write_all(&buffer).unwrap();
     stream.flush().unwrap();
-    println!("sent character list packet: {:X?}", buffer);
+
+    println!("\nsent character list packet: {:X?}", buffer);
 }
 
 fn parse_packets(buffer: [u8; 1024], mut stream: &mut TcpStream) {
     let mut buffer_slice = &buffer[..];
 
-    println!("buffer_slice.len(): {}", buffer_slice.len());
+    println!("\nParsing packet:");
 
     while buffer_slice.len() > 0 {
         let packet_id = read_u8(&mut buffer_slice);
+
         print!("{:X?},", packet_id);
 
         match packet_id {
@@ -212,4 +220,6 @@ fn parse_packets(buffer: [u8; 1024], mut stream: &mut TcpStream) {
             _ => continue,
         }
     }
+
+    println!("\nFinished parsing packet.");
 }
