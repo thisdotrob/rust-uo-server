@@ -37,9 +37,7 @@ pub fn start() {
 
         let mut connections = connections.lock().unwrap();
 
-        let mut next_connections = vec![];
-
-        while let Some(mut stream) = connections.pop() {
+        connections.retain_mut(|stream| {
             let mut buffer = [0; 1024];
 
             let received = stream.read(&mut buffer);
@@ -49,19 +47,20 @@ pub fn start() {
                     if num_bytes_read == 0 {
                         let addr = stream.peer_addr().unwrap();
                         println!("Connection closed by: {}", addr);
-                    } else {
-                        parse_packets(buffer, &mut stream);
-                        next_connections.push(stream);
+                        return false;
                     }
+                    parse_packets(buffer, stream);
+                    true
                 }
                 Err(e) => match e.kind() {
-                    WouldBlock => next_connections.push(stream),
-                    _ => println!("Unexpected error from stream.read(): {:?}", e),
+                    WouldBlock => true,
+                    _ => {
+                        println!("Unexpected error from stream.read(): {:?}", e);
+                        false
+                    }
                 },
             }
-        }
-
-        *connections = next_connections;
+        });
     }
 }
 
