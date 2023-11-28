@@ -48,12 +48,12 @@ fn handle_encrypted_login_seed_packet(buffer_slice: &mut &[u8]) {
     let (mut bytes, rest) = buffer_slice.split_at(packet_length);
     *buffer_slice = rest;
     let seed = read_u32(&mut bytes);
-    println!("\nseed: {}", seed);
+    println!("seed: {}", seed);
     let major = read_u32(&mut bytes);
     let minor = read_u32(&mut bytes);
     let revision = read_u32(&mut bytes);
     let patch = read_u32(&mut bytes);
-    println!("\nclient version: {}.{}.{}.{}", major, minor, revision, patch);
+    println!("client version: {}.{}.{}.{}", major, minor, revision, patch);
 }
 
 fn handle_account_login_request_packet(buffer_slice: &mut &[u8]) {
@@ -62,9 +62,9 @@ fn handle_account_login_request_packet(buffer_slice: &mut &[u8]) {
     let (mut bytes, rest) = buffer_slice.split_at(packet_length);
     *buffer_slice = rest;
     let username = read_string(&mut bytes, 30);
-    println!("\nusername: {}", username);
+    println!("username: {}", username);
     let password = read_string(&mut bytes, 30);
-    println!("\npassword: {}", password);
+    println!("password: {}", password);
 }
 
 fn handle_server_select_packet(buffer_slice: &mut &[u8]) {
@@ -73,20 +73,20 @@ fn handle_server_select_packet(buffer_slice: &mut &[u8]) {
     let (mut bytes, rest) = buffer_slice.split_at(packet_length);
     *buffer_slice = rest;
     let server_index = read_u16(&mut bytes);
-    println!("\nserver_index: {}", server_index);
+    println!("server_index: {}", server_index);
 }
 
 fn handle_post_login_packet(buffer_slice: &mut &[u8]) {
-    println!("\nPost Login packet received:");
+    println!("Post Login packet received:");
     let packet_length = 64;
     let (mut bytes, rest) = buffer_slice.split_at(packet_length);
     *buffer_slice = rest;
     let encryption_key = read_u32(&mut bytes);
-    println!("\nencryption_key: {}, ", encryption_key);
+    println!("encryption_key: {}, ", encryption_key);
     let username = read_string(&mut bytes, 30);
-    println!("\nusername: {}, ", username);
+    println!("username: {}, ", username);
     let password = read_string(&mut bytes, 30);
-    println!("\npassword: {}", password);
+    println!("password: {}", password);
 }
 
 fn send_server_list_packet(stream: &mut TcpStream) {
@@ -121,7 +121,7 @@ fn send_server_list_packet(stream: &mut TcpStream) {
     stream.write_all(&buffer).unwrap();
     stream.flush().unwrap();
 
-    println!("\nsent server list packet: {:X?}", buffer);
+    println!("\nSent Server List packet: {:X?}", buffer);
 }
 
 fn send_server_redirect_packet(stream: &mut TcpStream) {
@@ -150,7 +150,7 @@ fn send_server_redirect_packet(stream: &mut TcpStream) {
     stream.write_all(&buffer).unwrap();
     stream.flush().unwrap();
 
-    println!("\nsent server redirect packet: {:X?}", buffer);
+    println!("\nSent Server Redirect packet: {:X?}", buffer);
 }
 
 fn send_features_packet(stream: &mut TcpStream) {
@@ -165,7 +165,7 @@ fn send_features_packet(stream: &mut TcpStream) {
     stream.write_all(&buffer).unwrap();
     stream.flush().unwrap();
 
-    println!("\nsent features packet: {:X?}", buffer);
+    println!("\nSent Features packet: {:X?}", buffer);
 }
 
 fn send_character_list_packet(stream: &mut TcpStream) {
@@ -186,18 +186,16 @@ fn send_character_list_packet(stream: &mut TcpStream) {
     stream.write_all(&buffer).unwrap();
     stream.flush().unwrap();
 
-    println!("\nsent character list packet: {:X?}", buffer);
+    println!("\nSent Character List packet: {:X?}", buffer);
 }
 
 fn parse_packets(buffer: [u8; 1024], mut stream: &mut TcpStream) {
     let mut buffer_slice = &buffer[..];
 
-    println!("\nParsing packet:");
+    println!("\n============= Parsing packet =============\n");
 
     while buffer_slice.len() > 0 {
         let packet_id = read_u8(&mut buffer_slice);
-
-        print!("{:X?},", packet_id);
 
         match packet_id {
             0xEF => {
@@ -221,5 +219,5 @@ fn parse_packets(buffer: [u8; 1024], mut stream: &mut TcpStream) {
         }
     }
 
-    println!("\nFinished parsing packet.");
+    println!("\n======== Finished parsing packet. ========\n");
 }
