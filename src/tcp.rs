@@ -1,16 +1,67 @@
+use std::io::ErrorKind::WouldBlock;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
 use byteorder::{BigEndian, ByteOrder};
 use std::io::prelude::*;
-use std::net::TcpListener;
-use std::net::TcpStream;
+use std::net::{TcpListener, TcpStream};
 use std::str;
+use std::thread;
+
+fn bind(connections: Arc<Mutex<Vec<TcpStream>>>) {
+    thread::spawn(move || {
+        let listener = TcpListener::bind("127.0.0.1:2593").unwrap();
+
+        for stream in listener.incoming() {
+            let mut connections = connections.lock().unwrap();
+            let stream = stream.unwrap();
+            let addr = stream.peer_addr().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_nanos(1)))
+                .expect("set_read_timeout call failed");
+            println!("Connection received from: {}", addr);
+            connections.push(stream);
+        }
+    });
+}
 
 pub fn start() {
-    let listener = TcpListener::bind("127.0.0.1:2593").unwrap();
-    for stream in listener.incoming() {
-        let mut stream = stream.unwrap();
-        let mut buffer = [0; 1024];
-        stream.read(&mut buffer).unwrap();
-        parse_packets(buffer, &mut stream);
+    let connections: Vec<TcpStream> = vec![];
+
+    let connections = Arc::new(Mutex::new(connections));
+
+    bind(Arc::clone(&connections));
+
+    loop {
+        thread::sleep(Duration::from_millis(1));
+
+        let mut connections = connections.lock().unwrap();
+
+        let mut next_connections = vec![];
+
+        while let Some(mut stream) = connections.pop() {
+            let mut buffer = [0; 1024];
+
+            let received = stream.read(&mut buffer);
+
+            match received {
+                Ok(num_bytes_read) => {
+                    if num_bytes_read == 0 {
+                        let addr = stream.peer_addr().unwrap();
+                        println!("Connection closed by: {}", addr);
+                    } else {
+                        parse_packets(buffer, &mut stream);
+                        next_connections.push(stream);
+                    }
+                }
+                Err(e) => match e.kind() {
+                    WouldBlock => next_connections.push(stream),
+                    _ => println!("Unexpected error from stream.read(): {:?}", e),
+                },
+            }
+        }
+
+        *connections = next_connections;
     }
 }
 
