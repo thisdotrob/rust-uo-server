@@ -1,8 +1,8 @@
-use std::sync::{Arc, Mutex, mpsc};
-use std::thread;
-use std::time::Duration;
 use super::Timer;
 use crate::ticks::current_ticks;
+use std::sync::{mpsc, Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 
 pub fn spawn(execute_tx: mpsc::Sender<Timer>, new_timers: Arc<Mutex<Vec<Timer>>>) {
     thread::spawn(move || {

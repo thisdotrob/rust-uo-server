@@ -1,6 +1,6 @@
-use std::sync::{Arc, Mutex, mpsc};
-use std::thread;
 use super::Timer;
+use std::sync::{mpsc, Arc, Mutex};
+use std::thread;
 
 pub fn spawn(register_rx: mpsc::Receiver<Timer>, new_timers: Arc<Mutex<Vec<Timer>>>) {
     thread::spawn(move || {

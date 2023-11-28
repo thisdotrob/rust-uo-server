@@ -1,6 +1,6 @@
+use super::Timer;
 use std::sync::mpsc;
 use std::thread;
-use super::Timer;
 
 pub fn spawn(execute_rx: mpsc::Receiver<Timer>, register_tx: mpsc::Sender<Timer>) {
     thread::spawn(move || {

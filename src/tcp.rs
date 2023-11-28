@@ -1,8 +1,8 @@
-use std::str;
+use byteorder::{BigEndian, ByteOrder};
 use std::io::prelude::*;
 use std::net::TcpListener;
 use std::net::TcpStream;
-use byteorder::{ByteOrder, BigEndian};
+use std::str;
 
 mod thread_pool;
 
@@ -17,7 +17,7 @@ pub fn start() {
             let mut received = stream.read(&mut buffer).unwrap();
             while received > 0 {
                 handle_connection(buffer, &mut stream);
-                buffer = [0;1024];
+                buffer = [0; 1024];
                 received = stream.read(&mut buffer).unwrap();
             }
         });
@@ -33,7 +33,11 @@ fn read_u8(input: &mut &[u8]) -> u8 {
 fn read_u16(input: &mut &[u8]) -> u16 {
     let (int_bytes, rest) = input.split_at(2);
     *input = rest;
-    u16::from_be_bytes(int_bytes.try_into().unwrap())
+    u16::from_be_bytes(
+        int_bytes
+            .try_into()
+            .expect("int_bytes should always be two bytes long"),
+    )
 }
 
 fn read_u32(input: &mut &[u8]) -> u32 {
@@ -92,7 +96,7 @@ fn handle_post_login_packet(buffer_slice: &mut &[u8]) {
 }
 
 fn send_server_list_packet(stream: &mut TcpStream) {
-    let mut buffer: [u8;46] = [0;46];
+    let mut buffer: [u8; 46] = [0; 46];
 
     buffer[0] = 0xA8; // packet ID
 
@@ -123,10 +127,10 @@ fn send_server_list_packet(stream: &mut TcpStream) {
 fn send_server_redirect_packet(stream: &mut TcpStream) {
     // 8c 7f 00 00 01 0a 21 43
 
-    let mut buffer: [u8;11] = [0;11];
+    let mut buffer: [u8; 11] = [0; 11];
 
     buffer[0] = 0x8C; // packet ID
-    
+
     // server address
     buffer[1] = 0x7F; // 127;
     buffer[2] = 0x00; // 0;
@@ -149,7 +153,7 @@ fn send_server_redirect_packet(stream: &mut TcpStream) {
 }
 
 fn send_features_packet(stream: &mut TcpStream) {
-    let mut buffer: [u8;3] = [0;3];
+    let mut buffer: [u8; 3] = [0; 3];
 
     buffer[0] = 0xB9; // packet ID
 
@@ -163,12 +167,12 @@ fn send_features_packet(stream: &mut TcpStream) {
 }
 
 fn send_character_list_packet(stream: &mut TcpStream) {
-    let mut buffer: [u8;6] = [0;6];
+    let mut buffer: [u8; 6] = [0; 6];
 
     buffer[0] = 0xA9; // packet ID
                       //
     buffer[1] = 6; // packet size
-    
+
     buffer[2] = 0x00; // number of characters
 
     buffer[3] = 0x00; // number of cities
@@ -194,26 +198,22 @@ fn handle_connection(buffer: [u8; 1024], mut stream: &mut TcpStream) {
         match packet_id {
             0xEF => {
                 handle_encrypted_login_seed_packet(&mut buffer_slice);
-            },
+            }
             0x80 => {
                 handle_account_login_request_packet(&mut buffer_slice);
                 send_server_list_packet(&mut stream);
-            },
+            }
             0xA0 => {
                 handle_server_select_packet(&mut buffer_slice);
                 send_server_redirect_packet(&mut stream);
-            },
+            }
             0x91 => {
                 handle_post_login_packet(&mut buffer_slice);
                 send_features_packet(&mut stream);
                 send_character_list_packet(&mut stream);
-            },
-            0x73 => {
-                continue
-            },
-            _ => {
-                continue
-            },
+            }
+            0x73 => continue,
+            _ => continue,
         }
     }
 }

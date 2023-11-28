@@ -1,8 +1,8 @@
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{mpsc, Arc, Mutex};
 
-mod registration_thread;
-mod prioritisation_thread;
 mod execution_thread;
+mod prioritisation_thread;
+mod registration_thread;
 
 pub struct Timer {
     pub repetitions: isize,
@@ -22,5 +22,5 @@ pub fn start() -> mpsc::Sender<Timer> {
     prioritisation_thread::spawn(execute_tx, new_timers);
     execution_thread::spawn(execute_rx, register_tx.clone());
 
-    return register_tx
+    return register_tx;
 }

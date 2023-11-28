@@ -3,7 +3,9 @@ pub struct StateDelta {
     pub delta: i32,
 }
 
-pub trait State { fn update_state(&mut self, state_deltas: &Vec<StateDelta>); }
+pub trait State {
+    fn update_state(&mut self, state_deltas: &Vec<StateDelta>);
+}
 
 pub struct Character {
     pub hitpoints: i32,
@@ -15,7 +17,10 @@ impl State for Character {
         for state_delta in state_deltas {
             if state_delta.property == "hitpoints" {
                 self.hitpoints += state_delta.delta;
-                println!("Character {} hitpoints are now: {}", self.name, self.hitpoints);
+                println!(
+                    "Character {} hitpoints are now: {}",
+                    self.name, self.hitpoints
+                );
             }
         }
     }

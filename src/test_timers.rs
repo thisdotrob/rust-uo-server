@@ -1,7 +1,7 @@
-use std::sync::mpsc;
-use crate::timer::Timer;
-use crate::ticks::current_ticks;
 use crate::state::{Character, Monster};
+use crate::ticks::current_ticks;
+use crate::timer::Timer;
+use std::sync::mpsc;
 
 pub fn start(timer_register_tx: mpsc::Sender<Timer>) {
     // Start a Character timer that decrements hitpoints by 1 every second for 90 repetitions
@@ -14,10 +14,18 @@ pub fn start(timer_register_tx: mpsc::Sender<Timer>) {
     };
     let callback = Box::new(move || {
         state.hitpoints -= 1;
-        println!("Character {} hitpoints are now: {}", state.name, state.hitpoints);
+        println!(
+            "Character {} hitpoints are now: {}",
+            state.name, state.hitpoints
+        );
     });
 
-    let timer = Timer { repetitions, interval, next, callback };
+    let timer = Timer {
+        repetitions,
+        interval,
+        next,
+        callback,
+    };
     timer_register_tx.send(timer).unwrap();
 
     // Start a Monster timer that increases anger by 10 every 500ms for 50 repetitions
@@ -32,6 +40,11 @@ pub fn start(timer_register_tx: mpsc::Sender<Timer>) {
         state.anger += 10;
         println!("Monster {} anger is now: {}", state.name, state.anger);
     });
-    let timer = Timer { repetitions, interval, next, callback };
+    let timer = Timer {
+        repetitions,
+        interval,
+        next,
+        callback,
+    };
     timer_register_tx.send(timer).unwrap();
 }
