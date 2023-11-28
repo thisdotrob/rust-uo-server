@@ -1,5 +1,4 @@
 use std::io::ErrorKind::WouldBlock;
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use byteorder::{BigEndian, ByteOrder};
@@ -8,34 +7,24 @@ use std::net::{TcpListener, TcpStream};
 use std::str;
 use std::thread;
 
-fn bind(connections: Arc<Mutex<Vec<TcpStream>>>) {
-    thread::spawn(move || {
-        let listener = TcpListener::bind("127.0.0.1:2593").unwrap();
-
-        for stream in listener.incoming() {
-            let mut connections = connections.lock().unwrap();
-            let stream = stream.unwrap();
-            let addr = stream.peer_addr().unwrap();
-            stream
-                .set_read_timeout(Some(Duration::from_nanos(1)))
-                .expect("set_read_timeout call failed");
-            println!("Connection received from: {}", addr);
-            connections.push(stream);
-        }
-    });
-}
-
 pub fn start() {
-    let connections: Vec<TcpStream> = vec![];
+    let listener = TcpListener::bind("127.0.0.1:2593").unwrap();
+    listener
+        .set_nonblocking(true)
+        .expect("Cannot set non-blocking");
 
-    let connections = Arc::new(Mutex::new(connections));
-
-    bind(Arc::clone(&connections));
+    let mut connections: Vec<TcpStream> = vec![];
 
     loop {
         thread::sleep(Duration::from_millis(1));
 
-        let mut connections = connections.lock().unwrap();
+        if let Ok((stream, addr)) = listener.accept() {
+            println!("Connection received from: {}", addr);
+            stream
+                .set_read_timeout(Some(Duration::from_nanos(1)))
+                .expect("set_read_timeout call failed");
+            connections.push(stream);
+        }
 
         connections.retain_mut(|stream| {
             let mut buffer = [0; 1024];
