@@ -1,56 +1,45 @@
-use std::io::ErrorKind::WouldBlock;
-use std::time::Duration;
-
 use byteorder::{BigEndian, ByteOrder};
-use std::io::prelude::*;
-use std::net::{TcpListener, TcpStream};
 use std::str;
-use std::thread;
 
-pub fn start() {
-    let listener = TcpListener::bind("127.0.0.1:2593").unwrap();
-    listener
-        .set_nonblocking(true)
-        .expect("Cannot set non-blocking");
+use async_std::{
+    net::{TcpListener, TcpStream, ToSocketAddrs},
+    prelude::*,
+    task,
+};
 
-    let mut connections: Vec<TcpStream> = vec![];
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-    loop {
-        thread::sleep(Duration::from_millis(1));
+async fn connection_loop(mut stream: TcpStream) -> Result<()> {
+    let mut buffer = [0; 1024];
 
-        if let Ok((stream, addr)) = listener.accept() {
-            println!("Connection received from: {}", addr);
-            stream
-                .set_read_timeout(Some(Duration::from_nanos(1)))
-                .expect("set_read_timeout call failed");
-            connections.push(stream);
+    while let Ok(received) = stream.read(&mut buffer).await {
+        if received == 0 {
+            let addr = stream.peer_addr().unwrap();
+            println!("Connection closed by: {}", addr);
+            break;
+        } else {
+            parse_packets(buffer, &mut stream).await?;
+            buffer = [0; 1024];
         }
-
-        connections.retain_mut(|stream| {
-            let mut buffer = [0; 1024];
-
-            let received = stream.read(&mut buffer);
-
-            match received {
-                Ok(num_bytes_read) => {
-                    if num_bytes_read == 0 {
-                        let addr = stream.peer_addr().unwrap();
-                        println!("Connection closed by: {}", addr);
-                        return false;
-                    }
-                    parse_packets(buffer, stream);
-                    true
-                }
-                Err(e) => match e.kind() {
-                    WouldBlock => true,
-                    _ => {
-                        println!("Unexpected error from stream.read(): {:?}", e);
-                        false
-                    }
-                },
-            }
-        });
     }
+    Ok(())
+}
+
+async fn accept_loop(addr: impl ToSocketAddrs) -> Result<()> {
+    let listener = TcpListener::bind(addr).await?;
+    let mut incoming = listener.incoming();
+    while let Some(stream) = incoming.next().await {
+        let stream = stream?;
+        let addr = stream.peer_addr()?;
+        println!("Connection received from: {}", addr);
+        task::spawn(connection_loop(stream));
+    }
+    Ok(())
+}
+
+pub fn start() -> Result<()> {
+    let fut = accept_loop("127.0.0.1:2593");
+    task::block_on(fut)
 }
 
 fn read_u8(input: &mut &[u8]) -> u8 {
@@ -128,7 +117,7 @@ fn handle_post_login_packet(buffer_slice: &mut &[u8]) {
     println!("password: {}", password);
 }
 
-fn send_server_list_packet(stream: &mut TcpStream) {
+async fn send_server_list_packet(stream: &mut TcpStream) -> Result<()> {
     let mut buffer: [u8; 46] = [0; 46];
 
     buffer[0] = 0xA8; // packet ID
@@ -157,13 +146,15 @@ fn send_server_list_packet(stream: &mut TcpStream) {
     buffer[44] = 0x00;
     buffer[45] = 0x01;
 
-    stream.write_all(&buffer).unwrap();
-    stream.flush().unwrap();
+    stream.write_all(&buffer).await?;
+    stream.flush().await?;
 
     println!("\nSent Server List packet: {:X?}", buffer);
+
+    Ok(())
 }
 
-fn send_server_redirect_packet(stream: &mut TcpStream) {
+async fn send_server_redirect_packet(stream: &mut TcpStream) -> Result<()> {
     // 8c 7f 00 00 01 0a 21 43
 
     let mut buffer: [u8; 11] = [0; 11];
@@ -186,13 +177,15 @@ fn send_server_redirect_packet(stream: &mut TcpStream) {
     buffer[9] = 0x3F;
     buffer[10] = 0xF0;
 
-    stream.write_all(&buffer).unwrap();
-    stream.flush().unwrap();
+    stream.write_all(&buffer).await?;
+    stream.flush().await?;
 
     println!("\nSent Server Redirect packet: {:X?}", buffer);
+
+    Ok(())
 }
 
-fn send_features_packet(stream: &mut TcpStream) {
+async fn send_features_packet(stream: &mut TcpStream) -> Result<()> {
     let mut buffer: [u8; 3] = [0; 3];
 
     buffer[0] = 0xB9; // packet ID
@@ -201,13 +194,15 @@ fn send_features_packet(stream: &mut TcpStream) {
     buffer[1] = 0x00;
     buffer[2] = 0x00;
 
-    stream.write_all(&buffer).unwrap();
-    stream.flush().unwrap();
+    stream.write_all(&buffer).await?;
+    stream.flush().await?;
 
     println!("\nSent Features packet: {:X?}", buffer);
+
+    Ok(())
 }
 
-fn send_character_list_packet(stream: &mut TcpStream) {
+async fn send_character_list_packet(stream: &mut TcpStream) -> Result<()> {
     let mut buffer: [u8; 6] = [0; 6];
 
     buffer[0] = 0xA9; // packet ID
@@ -222,13 +217,15 @@ fn send_character_list_packet(stream: &mut TcpStream) {
     buffer[4] = 0x00;
     buffer[5] = 0x00;
 
-    stream.write_all(&buffer).unwrap();
-    stream.flush().unwrap();
+    stream.write_all(&buffer).await?;
+    stream.flush().await?;
 
     println!("\nSent Character List packet: {:X?}", buffer);
+
+    Ok(())
 }
 
-fn parse_packets(buffer: [u8; 1024], mut stream: &mut TcpStream) {
+async fn parse_packets(buffer: [u8; 1024], mut stream: &mut TcpStream) -> Result<()> {
     let mut buffer_slice = &buffer[..];
 
     println!("\n============= Parsing packet =============\n");
@@ -242,16 +239,16 @@ fn parse_packets(buffer: [u8; 1024], mut stream: &mut TcpStream) {
             }
             0x80 => {
                 handle_account_login_request_packet(&mut buffer_slice);
-                send_server_list_packet(&mut stream);
+                send_server_list_packet(&mut stream).await?;
             }
             0xA0 => {
                 handle_server_select_packet(&mut buffer_slice);
-                send_server_redirect_packet(&mut stream);
+                send_server_redirect_packet(&mut stream).await?;
             }
             0x91 => {
                 handle_post_login_packet(&mut buffer_slice);
-                send_features_packet(&mut stream);
-                send_character_list_packet(&mut stream);
+                send_features_packet(&mut stream).await?;
+                send_character_list_packet(&mut stream).await?;
             }
             0x73 => continue,
             _ => continue,
@@ -259,4 +256,6 @@ fn parse_packets(buffer: [u8; 1024], mut stream: &mut TcpStream) {
     }
 
     println!("\n======== Finished parsing packet. ========\n");
+
+    Ok(())
 }
