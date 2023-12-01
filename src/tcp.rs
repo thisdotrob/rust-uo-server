@@ -1,4 +1,3 @@
-use byteorder::{BigEndian, ByteOrder};
 use std::str;
 
 use async_std::{
@@ -122,33 +121,7 @@ fn handle_post_login_packet(buffer_slice: &mut &[u8]) {
 }
 
 async fn send_server_list_packet(stream: &mut TcpStream) -> Result<()> {
-    let mut buffer: [u8; 46] = [0; 46];
-
-    buffer[0] = 0xA8; // packet ID
-
-    buffer[2] = 0x2E; // packet length
-
-    buffer[3] = 0x00; // flags (unused, ServUO uses 0x5D
-
-    BigEndian::write_u16(&mut buffer[4..6], 1); // server count
-
-    BigEndian::write_u16(&mut buffer[6..8], 0); // server index
-
-    buffer[8..16].copy_from_slice("My Shard".as_bytes()); // server name
-
-    buffer[37] = 0x00; // server percent full
-
-    // server timezone
-    buffer[38] = 0x00;
-    buffer[39] = 0x00;
-    buffer[40] = 0x00;
-    buffer[41] = 0x00;
-
-    // server address
-    buffer[42] = 0x7F;
-    buffer[43] = 0x00;
-    buffer[44] = 0x00;
-    buffer[45] = 0x01;
+    let buffer = packets::server_list_packet();
 
     stream.write_all(&buffer).await?;
     stream.flush().await?;
@@ -159,27 +132,7 @@ async fn send_server_list_packet(stream: &mut TcpStream) -> Result<()> {
 }
 
 async fn send_server_redirect_packet(stream: &mut TcpStream) -> Result<()> {
-    // 8c 7f 00 00 01 0a 21 43
-
-    let mut buffer: [u8; 11] = [0; 11];
-
-    buffer[0] = 0x8C; // packet ID
-
-    // server address
-    buffer[1] = 0x7F; // 127;
-    buffer[2] = 0x00; // 0;
-    buffer[3] = 0x00; // 0;
-    buffer[4] = 0x01; // 1;
-
-    // server port
-    buffer[5] = 0x0A; // 10;
-    buffer[6] = 0x21; // 33;
-
-    // encryption key
-    buffer[7] = 0x43; // copied from a ServUO sample packet
-    buffer[8] = 0x2F;
-    buffer[9] = 0x3F;
-    buffer[10] = 0xF0;
+    let buffer = packets::server_redirect_packet();
 
     stream.write_all(&buffer).await?;
     stream.flush().await?;
@@ -190,10 +143,7 @@ async fn send_server_redirect_packet(stream: &mut TcpStream) -> Result<()> {
 }
 
 async fn send_features_packet(stream: &mut TcpStream) -> Result<()> {
-    let src = vec![
-        0xB9, // packet ID
-        0x00, 0xFF, 0x92, 0xDB, // flags
-    ];
+    let src = packets::features_packet();
 
     let mut output = Vec::new();
 
