@@ -7,9 +7,63 @@ use async_std::{
     task,
 };
 
+use crate::huffman::{Huffman, HuffmanTable, TerminalCode};
+
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
+const SERVUO_HUFFMAN_TABLE_VALUES: [u32; 256] = [
+    0x000, 0x01F, 0x022, 0x034, 0x075, 0x028, 0x03B, 0x032, 0x0E0, 0x062, 0x056, 0x079, 0x19D,
+    0x097, 0x02A, 0x057, 0x071, 0x05B, 0x1CC, 0x0A7, 0x025, 0x04F, 0x066, 0x07D, 0x191, 0x1CE,
+    0x03F, 0x090, 0x059, 0x07B, 0x091, 0x0C6, 0x02D, 0x186, 0x06F, 0x093, 0x1CC, 0x05A, 0x1AE,
+    0x1C0, 0x148, 0x14A, 0x082, 0x19F, 0x171, 0x120, 0x0E7, 0x1F3, 0x14B, 0x100, 0x190, 0x013,
+    0x161, 0x125, 0x133, 0x195, 0x173, 0x1CA, 0x086, 0x1E9, 0x0DB, 0x1EC, 0x08B, 0x085, 0x00A,
+    0x096, 0x09C, 0x1C3, 0x19C, 0x08F, 0x18F, 0x091, 0x087, 0x0C6, 0x177, 0x089, 0x0D6, 0x08C,
+    0x1EE, 0x1EB, 0x084, 0x164, 0x175, 0x1CD, 0x05E, 0x088, 0x12B, 0x172, 0x10A, 0x08D, 0x13A,
+    0x11C, 0x1E1, 0x1E0, 0x187, 0x1DC, 0x1DF, 0x074, 0x19F, 0x08D, 0x0E4, 0x079, 0x0EA, 0x0E1,
+    0x040, 0x041, 0x10B, 0x0B0, 0x06A, 0x0C1, 0x071, 0x078, 0x0B1, 0x14C, 0x043, 0x076, 0x066,
+    0x04D, 0x08A, 0x02F, 0x0C9, 0x0CE, 0x149, 0x160, 0x1BA, 0x19E, 0x39F, 0x0E5, 0x194, 0x184,
+    0x126, 0x030, 0x06C, 0x121, 0x1E8, 0x1C1, 0x11D, 0x163, 0x385, 0x3DB, 0x17D, 0x106, 0x397,
+    0x24E, 0x02E, 0x098, 0x33C, 0x32E, 0x1E9, 0x0BF, 0x3DF, 0x1DD, 0x32D, 0x2ED, 0x30B, 0x107,
+    0x2E8, 0x3DE, 0x125, 0x1E8, 0x0E9, 0x1CD, 0x1B5, 0x165, 0x232, 0x2E1, 0x3AE, 0x3C6, 0x3E2,
+    0x205, 0x29A, 0x248, 0x2CD, 0x23B, 0x3C5, 0x251, 0x2E9, 0x252, 0x1EA, 0x3A0, 0x391, 0x23C,
+    0x392, 0x3D5, 0x233, 0x2CC, 0x390, 0x1BB, 0x3A1, 0x3C4, 0x211, 0x203, 0x12A, 0x231, 0x3E0,
+    0x29B, 0x3D7, 0x202, 0x3AD, 0x213, 0x253, 0x32C, 0x23D, 0x23F, 0x32F, 0x11C, 0x384, 0x31C,
+    0x17C, 0x30A, 0x2E0, 0x276, 0x250, 0x3E3, 0x396, 0x18F, 0x204, 0x206, 0x230, 0x265, 0x212,
+    0x23E, 0x3AC, 0x393, 0x3E1, 0x1DE, 0x3D6, 0x31D, 0x3E5, 0x3E4, 0x207, 0x3C7, 0x277, 0x3D4,
+    0x0C0, 0x162, 0x3DA, 0x124, 0x1B4, 0x264, 0x33D, 0x1D1, 0x1AF, 0x39E, 0x24F, 0x373, 0x249,
+    0x372, 0x167, 0x210, 0x23A, 0x1B8, 0x3AF, 0x18E, 0x2EC, 0x062,
+];
+
+const SERVUO_HUFFMAN_TABLE_BIT_COUNTS: [u8; 256] = [
+    2, 5, 6, 7, 7, 6, 6, 7, 8, 8, 7, 8, 9, 8, 6, 7, 8, 8, 9, 8, 7, 7, 8, 8, 9, 9, 7, 9, 8, 8, 8, 8,
+    6, 9, 8, 9, 10, 8, 10, 10, 9, 9, 9, 10, 9, 9, 9, 10, 9, 9, 9, 6, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
+    9, 9, 5, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 8, 9, 9, 9, 9, 9, 9, 9, 10,
+    10, 9, 10, 10, 7, 9, 8, 8, 7, 9, 9, 8, 7, 9, 9, 8, 8, 7, 7, 8, 9, 7, 8, 7, 7, 9, 6, 8, 9, 9, 9,
+    10, 10, 10, 9, 9, 9, 9, 7, 8, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 7, 8, 10, 10, 10, 9,
+    10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 9, 10, 10, 9, 10, 10, 11, 11, 11, 10, 10, 10, 10, 10,
+    11, 10, 10, 10, 9, 11, 11, 10, 11, 11, 10, 10, 11, 10, 11, 11, 10, 10, 9, 10, 11, 10, 11, 10,
+    11, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 11, 10, 10, 10, 10, 10, 10, 10, 10,
+    11, 11, 11, 10, 11, 10, 11, 11, 10, 11, 10, 11, 8, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 11,
+    10, 11, 9, 10, 10, 10, 11, 10, 10, 7,
+];
+
+const UO_TERMINAL_CODE_BIT_COUNT: u8 = 4;
+
+const UO_TERMINAL_CODE_VALUE: u32 = 0xD;
+
 async fn connection_loop(mut stream: TcpStream) -> Result<()> {
+    let table = HuffmanTable {
+        values: SERVUO_HUFFMAN_TABLE_VALUES,
+        bit_counts: SERVUO_HUFFMAN_TABLE_BIT_COUNTS,
+    };
+
+    let terminal_code = TerminalCode {
+        bit_count: UO_TERMINAL_CODE_BIT_COUNT,
+        value: UO_TERMINAL_CODE_VALUE,
+    };
+
+    let mut huffman = Huffman::new(table, Some(terminal_code));
+
     let mut buffer = [0; 1024];
 
     while let Ok(received) = stream.read(&mut buffer).await {
@@ -18,7 +72,7 @@ async fn connection_loop(mut stream: TcpStream) -> Result<()> {
             println!("Connection closed by: {}", addr);
             break;
         } else {
-            parse_packets(buffer, &mut stream).await?;
+            parse_packets(buffer, &mut stream, &mut huffman).await?;
             buffer = [0; 1024];
         }
     }
@@ -185,47 +239,52 @@ async fn send_server_redirect_packet(stream: &mut TcpStream) -> Result<()> {
     Ok(())
 }
 
-async fn send_features_packet(stream: &mut TcpStream) -> Result<()> {
-    let mut buffer: [u8; 3] = [0; 3];
+async fn send_features_packet(stream: &mut TcpStream, huffman: &mut Huffman) -> Result<()> {
+    let src = vec![
+        0xB9, // packet ID
+        0x00, 0xFF, 0x92, 0xDB, // flags
+    ];
 
-    buffer[0] = 0xB9; // packet ID
+    let mut output = Vec::new();
 
-    // flags
-    buffer[1] = 0x00;
-    buffer[2] = 0x00;
+    println!("\nCompressing Features packet: {:X?}", src);
+    huffman.compress(src, &mut output);
 
-    stream.write_all(&buffer).await?;
+    stream.write_all(&output).await?;
     stream.flush().await?;
 
-    println!("\nSent Features packet: {:X?}", buffer);
+    println!("\nSent compressed Features packet: {:X?}", output);
 
     Ok(())
 }
 
-async fn send_character_list_packet(stream: &mut TcpStream) -> Result<()> {
-    let mut buffer: [u8; 6] = [0; 6];
+async fn send_character_list_packet(stream: &mut TcpStream, huffman: &mut Huffman) -> Result<()> {
+    let src = vec![
+        0xA9, // packet ID
+        0x00, 0x006, // packet size
+        0x00,  // number of characters
+        0x00,  // number of cities
+        0x00, 0x00, // flags
+    ];
 
-    buffer[0] = 0xA9; // packet ID
-                      //
-    buffer[1] = 6; // packet size
+    let mut output = Vec::new();
 
-    buffer[2] = 0x00; // number of characters
+    println!("\nCompressing Character List packet: {:X?}", src);
+    huffman.compress(src, &mut output);
 
-    buffer[3] = 0x00; // number of cities
-
-    // flags
-    buffer[4] = 0x00;
-    buffer[5] = 0x00;
-
-    stream.write_all(&buffer).await?;
+    stream.write_all(&output).await?;
     stream.flush().await?;
 
-    println!("\nSent Character List packet: {:X?}", buffer);
+    println!("\nSent compressed Character List packet: {:X?}", output);
 
     Ok(())
 }
 
-async fn parse_packets(buffer: [u8; 1024], mut stream: &mut TcpStream) -> Result<()> {
+async fn parse_packets(
+    buffer: [u8; 1024],
+    mut stream: &mut TcpStream,
+    huffman: &mut Huffman,
+) -> Result<()> {
     let mut buffer_slice = &buffer[..];
 
     println!("\n============= Parsing packet =============\n");
@@ -247,8 +306,8 @@ async fn parse_packets(buffer: [u8; 1024], mut stream: &mut TcpStream) -> Result
             }
             0x91 => {
                 handle_post_login_packet(&mut buffer_slice);
-                send_features_packet(&mut stream).await?;
-                send_character_list_packet(&mut stream).await?;
+                send_features_packet(&mut stream, huffman).await?;
+                send_character_list_packet(&mut stream, huffman).await?;
             }
             0x73 => continue,
             _ => continue,
