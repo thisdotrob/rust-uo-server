@@ -6,7 +6,6 @@ mod huffman;
 mod huffman_table;
 mod state;
 mod tcp;
-mod terminal_code;
 mod test_timers;
 mod ticks;
 mod timer;
