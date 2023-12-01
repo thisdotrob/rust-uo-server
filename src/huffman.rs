@@ -1,4 +1,7 @@
-use crate::compressor::Compressor;
+mod compressor;
+mod huffman_table;
+
+use compressor::Compressor;
 
 pub fn compress(src: Vec<u8>, output: &mut Vec<u8>) {
     let mut compressor = Compressor::new();

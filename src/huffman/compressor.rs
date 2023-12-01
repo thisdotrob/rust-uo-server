@@ -1,7 +1,7 @@
-use crate::compressor::buffer::CompressorBuffer;
-use crate::huffman_table;
-
 mod buffer;
+
+use super::huffman_table;
+use buffer::CompressorBuffer;
 
 const TERMINAL_CODE_BIT_COUNT: u8 = 4;
 const TERMINAL_CODE_VALUE: u32 = 0xD;

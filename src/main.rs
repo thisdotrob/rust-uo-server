@@ -1,9 +1,7 @@
 use std::thread;
 use std::time::Duration;
 
-mod compressor;
 mod huffman;
-mod huffman_table;
 mod state;
 mod tcp;
 mod test_timers;
