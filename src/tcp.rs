@@ -9,6 +9,8 @@ use async_std::{
 
 use crate::huffman::{Huffman, HuffmanTable, TerminalCode};
 
+mod packets;
+
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 const SERVUO_HUFFMAN_TABLE_VALUES: [u32; 256] = [
@@ -259,17 +261,11 @@ async fn send_features_packet(stream: &mut TcpStream, huffman: &mut Huffman) -> 
 }
 
 async fn send_character_list_packet(stream: &mut TcpStream, huffman: &mut Huffman) -> Result<()> {
-    let src = vec![
-        0xA9, // packet ID
-        0x00, 0x006, // packet size
-        0x00,  // number of characters
-        0x00,  // number of cities
-        0x00, 0x00, // flags
-    ];
+    let src = packets::character_list_packet();
 
     let mut output = Vec::new();
 
-    println!("\nCompressing Character List packet: {:X?}", src);
+    println!("\nCompressing Character List packet: {:02X?}", src);
     huffman.compress(src, &mut output);
 
     stream.write_all(&output).await?;
